@@ -204,7 +204,7 @@ function App() {
     <div className={`app-layout ${isFullscreen ? 'fullscreen' : ''}`}>
       {/* Settings Panel */}
       <aside className="settings-panel">
-        <h1>✨ Post Creator</h1>
+        <h1>✨ Speedrun Content Tool</h1>
 
         {/* Aspect Ratio */}
         <div className="settings-section">
