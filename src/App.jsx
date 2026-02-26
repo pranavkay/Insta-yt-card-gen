@@ -81,8 +81,8 @@ function App() {
 
   // Text background state
   const [showTextBg, setShowTextBg] = useState(false);
-  const [textBgColor, setTextBgColor] = useState(COLORS[0]);
   const [textBgOpacity, setTextBgOpacity] = useState(50);
+  const [textImage, setTextImage] = useState(null);
 
   // YouTube Player ref and state
   const playerRef = useRef(null);
@@ -159,6 +159,24 @@ function App() {
       window.onYouTubeIframeAPIReady = null;
     };
   }, [videoId]);
+
+  // Handle Image Upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setTextImage(imageUrl);
+
+      // If we upload an image and position is currently 'center', move it to 'bottom'
+      if (textPosition === 'center') {
+        setTextPosition('bottom');
+      }
+    }
+  };
+
+  const removeImage = () => {
+    setTextImage(null);
+  };
 
   // Handle play/pause
   const togglePlayPause = useCallback(() => {
@@ -360,15 +378,19 @@ function App() {
         <div className="settings-section">
           <label>Position</label>
           <div className="inline-controls">
-            {POSITION_OPTIONS.map((pos) => (
-              <button
-                key={pos.id}
-                className={`inline-btn ${textPosition === pos.id ? 'selected' : ''}`}
-                onClick={() => setTextPosition(pos.id)}
-              >
-                {pos.icon} {pos.label}
-              </button>
-            ))}
+            {POSITION_OPTIONS.map((pos) => {
+              const isDisabled = textImage !== null && pos.id === 'center';
+              return (
+                <button
+                  key={pos.id}
+                  className={`inline-btn ${textPosition === pos.id ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
+                  onClick={() => !isDisabled && setTextPosition(pos.id)}
+                  title={isDisabled ? "Center position is disabled when an image is added" : ""}
+                >
+                  {pos.icon} {pos.label}
+                </button>
+              );
+            })}
           </div>
           <label style={{ marginTop: '8px' }}>Alignment</label>
           <div className="inline-controls">
@@ -419,6 +441,57 @@ function App() {
                   />
                 ))}
               </div>
+
+              <div className="section-divider" style={{ margin: '8px 0' }} />
+
+              <label style={{ marginBottom: '-6px' }}>Image inside Card</label>
+              {!textImage ? (
+                <div className="upload-btn-wrapper">
+                  <button className="settings-input" style={{ textAlign: 'center', cursor: 'pointer', padding: '12px' }}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'text-bottom' }}>
+                      <path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                      <path d="M0 0h24v24H0z" fill="none" />
+                      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+                    </svg>
+                    Upload Image
+                  </button>
+                  <input type="file" accept="image/*" onChange={handleImageUpload} />
+                </div>
+              ) : (
+                <div className="image-preview" style={{ position: 'relative', marginTop: '4px' }}>
+                  <img
+                    src={textImage}
+                    alt="Uploaded"
+                    style={{
+                      width: '100%',
+                      height: '80px',
+                      objectFit: 'cover',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-border)'
+                    }}
+                  />
+                  <button
+                    onClick={removeImage}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      background: 'rgba(0,0,0,0.6)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: 24,
+                      height: 24,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -472,17 +545,28 @@ function App() {
           {/* Overlay with Text */}
           <div className={`overlay position-${textPosition}`}>
             <div
-              className="text-card"
+              className={`text-card ${textImage ? `has-image image-${textPosition === 'bottom' ? 'top' : 'bottom'}` : ''}`}
               style={{
                 backgroundColor: showTextBg ? hexToRgba(textBgColor.value, textBgOpacity) : 'transparent',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'center',
               }}
             >
+              {textImage && (
+                <img
+                  src={textImage}
+                  alt="Card Image"
+                  className="card-uploaded-image"
+                />
+              )}
               <p
                 className={`overlay-text align-${textAlign}`}
                 style={{
                   fontFamily: selectedFont.family,
                   color: selectedColor.value,
                   fontSize: `${fontSize}px`,
+                  margin: 0
                 }}
               >
                 {text}

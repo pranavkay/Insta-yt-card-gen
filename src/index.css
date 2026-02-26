@@ -551,10 +551,51 @@ textarea.settings-input {
   justify-content: flex-end;
 }
 
+.overlay.position-justify {
+  justify-content: stretch;
+}
+
 .text-card {
   padding: 16px 20px;
   border-radius: var(--radius-md);
   max-width: 100%;
+}
+
+.text-card.has-image {
+  flex-direction: column;
+}
+
+.text-card.has-image.image-top {
+  flex-direction: column;
+}
+
+.text-card.has-image.image-bottom {
+  flex-direction: column-reverse;
+}
+
+.card-uploaded-image {
+  max-width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* Upload Image Wrapper */
+.upload-btn-wrapper {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+.upload-btn-wrapper input[type=file] {
+  font-size: 100px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  cursor: pointer;
+  height: 100%;
 }
 
 .overlay-text {
