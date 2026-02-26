@@ -46,6 +46,22 @@ const ALIGN_OPTIONS = [
   { id: 'justify', label: 'Justify' },
 ];
 
+const TEXT_SIZE_OPTIONS = [
+  { id: 'small', label: 'S', size: 16 },
+  { id: 'medium', label: 'M', size: 24 },
+  { id: 'large', label: 'L', size: 36 },
+  { id: 'xlarge', label: 'XL', size: 48 },
+  { id: 'xxlarge', label: '2XL', size: 64 },
+];
+
+const IMAGE_POSITION_OPTIONS = [
+  { id: 'top', label: '↑ Top' },
+  { id: 'bottom', label: '↓ Bottom' },
+  { id: 'left', label: '← Left' },
+  { id: 'right', label: '→ Right' },
+  { id: 'center', label: '↕ Center' },
+];
+
 // Extract YouTube video ID from various URL formats
 function getYouTubeVideoId(url) {
   if (!url) return null;
@@ -72,7 +88,6 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Text state
-  const [text, setText] = useState('Your text here');
   const [selectedFont, setSelectedFont] = useState(FONTS[0]);
   const [selectedColor, setSelectedColor] = useState(COLORS[1]);
   const [fontSize, setFontSize] = useState(32);
@@ -84,6 +99,11 @@ function App() {
   const [textBgColor, setTextBgColor] = useState(COLORS[0]);
   const [textBgOpacity, setTextBgOpacity] = useState(50);
   const [textImage, setTextImage] = useState(null);
+  const [imagePosition, setImagePosition] = useState('top');
+
+  // Rich text ref
+  const editorRef = useRef(null);
+  const previewRef = useRef(null);
 
   // YouTube Player ref and state
   const playerRef = useRef(null);
@@ -140,7 +160,6 @@ function App() {
             }
           },
           onStateChange: (event) => {
-            // Loop the video when it ends
             if (event.data === window.YT.PlayerState.ENDED) {
               event.target.playVideo();
             }
@@ -149,7 +168,6 @@ function App() {
       });
     };
 
-    // Wait for YT API to be ready
     if (window.YT && window.YT.Player) {
       initPlayer();
     } else {
@@ -161,17 +179,57 @@ function App() {
     };
   }, [videoId]);
 
+  // Sync editor content to preview
+  const syncContent = () => {
+    if (editorRef.current && previewRef.current) {
+      previewRef.current.innerHTML = editorRef.current.innerHTML;
+    }
+  };
+
+  // Apply font size to selected text
+  const applySize = (size) => {
+    // Focus editor to restore selection
+    editorRef.current?.focus();
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+
+    if (range.collapsed) {
+      // No text selected - wrap future typing in a span
+      const span = document.createElement('span');
+      span.style.fontSize = `${size}px`;
+      span.innerHTML = '&#8203;'; // zero-width space
+      range.insertNode(span);
+      // Move cursor inside span
+      range.setStart(span.firstChild, 1);
+      range.setEnd(span.firstChild, 1);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      // Wrap selected text in a span with the new size
+      const contents = range.extractContents();
+      const span = document.createElement('span');
+      span.style.fontSize = `${size}px`;
+      span.appendChild(contents);
+      range.insertNode(span);
+      // Select the newly wrapped text
+      selection.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      selection.addRange(newRange);
+    }
+
+    syncContent();
+  };
+
   // Handle Image Upload
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const imageUrl = URL.createObjectURL(file);
       setTextImage(imageUrl);
-
-      // If we upload an image and position is currently 'center', move it to 'bottom'
-      if (textPosition === 'center') {
-        setTextPosition('bottom');
-      }
     }
   };
 
@@ -217,6 +275,19 @@ function App() {
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+  };
+
+  // Determine flex direction for image layout
+  const getCardFlexDirection = () => {
+    if (!textImage) return 'column';
+    switch (imagePosition) {
+      case 'top': return 'column';       // image on top, text below
+      case 'bottom': return 'column-reverse'; // text on top, image below
+      case 'left': return 'row';          // image left, text right
+      case 'right': return 'row-reverse'; // text left, image right
+      case 'center': return 'column';     // image stacked, centered
+      default: return 'column';
+    }
   };
 
   return (
@@ -320,15 +391,32 @@ function App() {
 
         <div className="section-divider" />
 
-        {/* Text Section */}
+        {/* Text Content with Rich Text Size Toolbar */}
         <div className="settings-section">
           <label>Content</label>
-          <textarea
-            className="settings-input"
-            placeholder="Enter your post text..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
+          <div className="rich-text-toolbar">
+            {TEXT_SIZE_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                className="size-btn"
+                onClick={() => applySize(opt.size)}
+                title={`${opt.size}px`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <div
+            ref={editorRef}
+            className="settings-input rich-editor"
+            contentEditable
+            suppressContentEditableWarning
+            onInput={syncContent}
+            style={{ fontSize: `${fontSize}px` }}
+            data-placeholder="Type your text here..."
+          >
+            Your text here
+          </div>
         </div>
 
         {/* Font Section */}
@@ -352,7 +440,7 @@ function App() {
         <div className="settings-section">
           <label>Text Style</label>
           <div className="slider-row">
-            <label>Size</label>
+            <label>Base Size</label>
             <input
               type="range"
               min="16"
@@ -379,19 +467,15 @@ function App() {
         <div className="settings-section">
           <label>Position</label>
           <div className="inline-controls">
-            {POSITION_OPTIONS.map((pos) => {
-              const isDisabled = textImage !== null && pos.id === 'center';
-              return (
-                <button
-                  key={pos.id}
-                  className={`inline-btn ${textPosition === pos.id ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
-                  onClick={() => !isDisabled && setTextPosition(pos.id)}
-                  title={isDisabled ? "Center position is disabled when an image is added" : ""}
-                >
-                  {pos.icon} {pos.label}
-                </button>
-              );
-            })}
+            {POSITION_OPTIONS.map((pos) => (
+              <button
+                key={pos.id}
+                className={`inline-btn ${textPosition === pos.id ? 'selected' : ''}`}
+                onClick={() => setTextPosition(pos.id)}
+              >
+                {pos.icon} {pos.label}
+              </button>
+            ))}
           </div>
           <label style={{ marginTop: '8px' }}>Alignment</label>
           <div className="inline-controls">
@@ -445,13 +529,11 @@ function App() {
 
               <div className="section-divider" style={{ margin: '8px 0' }} />
 
-              <label style={{ marginBottom: '-6px' }}>Image inside Card</label>
+              <label>Image</label>
               {!textImage ? (
                 <div className="upload-btn-wrapper">
                   <button className="settings-input" style={{ textAlign: 'center', cursor: 'pointer', padding: '12px' }}>
                     <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 16, height: 16, marginRight: 8, verticalAlign: 'text-bottom' }}>
-                      <path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                      <path d="M0 0h24v24H0z" fill="none" />
                       <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
                     Upload Image
@@ -459,39 +541,53 @@ function App() {
                   <input type="file" accept="image/*" onChange={handleImageUpload} />
                 </div>
               ) : (
-                <div className="image-preview" style={{ position: 'relative', marginTop: '4px' }}>
-                  <img
-                    src={textImage}
-                    alt="Uploaded"
-                    style={{
-                      width: '100%',
-                      height: '80px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-border)'
-                    }}
-                  />
-                  <button
-                    onClick={removeImage}
-                    style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      background: 'rgba(0,0,0,0.6)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: 24,
-                      height: 24,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
+                <>
+                  <div className="image-preview" style={{ position: 'relative', marginTop: '4px' }}>
+                    <img
+                      src={textImage}
+                      alt="Uploaded"
+                      style={{
+                        width: '100%',
+                        height: '80px',
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)'
+                      }}
+                    />
+                    <button
+                      onClick={removeImage}
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        background: 'rgba(0,0,0,0.6)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: 24,
+                        height: 24,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <label style={{ marginTop: '6px' }}>Image Position</label>
+                  <div className="inline-controls">
+                    {IMAGE_POSITION_OPTIONS.map((pos) => (
+                      <button
+                        key={pos.id}
+                        className={`inline-btn ${imagePosition === pos.id ? 'selected' : ''}`}
+                        onClick={() => setImagePosition(pos.id)}
+                      >
+                        {pos.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </>
           )}
@@ -546,32 +642,30 @@ function App() {
           {/* Overlay with Text */}
           <div className={`overlay position-${textPosition}`}>
             <div
-              className={`text-card ${textImage ? `has-image image-${textPosition === 'bottom' ? 'top' : 'bottom'}` : ''}`}
+              className="text-card"
               style={{
                 backgroundColor: showTextBg ? hexToRgba(textBgColor.value, textBgOpacity) : 'transparent',
-                display: 'flex',
-                gap: '12px',
-                alignItems: 'center',
+                flexDirection: getCardFlexDirection(),
+                alignItems: imagePosition === 'center' ? 'center' : (imagePosition === 'left' || imagePosition === 'right') ? 'center' : 'stretch',
               }}
             >
               {textImage && (
                 <img
                   src={textImage}
                   alt="Card Image"
-                  className="card-uploaded-image"
+                  className={`card-uploaded-image ${imagePosition === 'center' ? 'image-centered' : ''}`}
                 />
               )}
-              <p
+              <div
+                ref={previewRef}
                 className={`overlay-text align-${textAlign}`}
                 style={{
                   fontFamily: selectedFont.family,
                   color: selectedColor.value,
                   fontSize: `${fontSize}px`,
-                  margin: 0
                 }}
-              >
-                {text}
-              </p>
+                dangerouslySetInnerHTML={{ __html: editorRef.current?.innerHTML || 'Your text here' }}
+              />
             </div>
           </div>
         </div>

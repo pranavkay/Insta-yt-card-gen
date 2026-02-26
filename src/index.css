@@ -551,26 +551,12 @@ textarea.settings-input {
   justify-content: flex-end;
 }
 
-.overlay.position-justify {
-  justify-content: stretch;
-}
-
 .text-card {
   padding: 16px 20px;
   border-radius: var(--radius-md);
   max-width: 100%;
-}
-
-.text-card.has-image {
-  flex-direction: column;
-}
-
-.text-card.has-image.image-top {
-  flex-direction: column;
-}
-
-.text-card.has-image.image-bottom {
-  flex-direction: column-reverse;
+  display: flex;
+  gap: 12px;
 }
 
 .card-uploaded-image {
@@ -578,6 +564,12 @@ textarea.settings-input {
   max-height: 200px;
   object-fit: contain;
   border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.card-uploaded-image.image-centered {
+  align-self: center;
+  max-width: 60%;
 }
 
 /* Upload Image Wrapper */
@@ -596,6 +588,53 @@ textarea.settings-input {
   opacity: 0;
   cursor: pointer;
   height: 100%;
+}
+
+/* Rich Text Toolbar */
+.rich-text-toolbar {
+  display: flex;
+  gap: 4px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 6px 8px;
+}
+
+.size-btn {
+  padding: 4px 10px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+.size-btn:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.rich-editor {
+  min-height: 80px;
+  border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  cursor: text;
+  line-height: 1.4;
+}
+
+.rich-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+/* Disabled button style */
+.inline-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .overlay-text {
