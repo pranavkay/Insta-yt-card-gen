@@ -81,6 +81,7 @@ function App() {
 
   // Text background state
   const [showTextBg, setShowTextBg] = useState(false);
+  const [textBgColor, setTextBgColor] = useState(COLORS[0]);
   const [textBgOpacity, setTextBgOpacity] = useState(50);
   const [textImage, setTextImage] = useState(null);
 
